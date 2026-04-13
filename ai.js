@@ -12,7 +12,7 @@ Intent rules:
 Return ONLY the JSON. No markdown. No explanation. No backticks.`;
 
 async function analyzeMessage(message) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`;
   
   const response = await fetch(url, {
     method: "POST",
