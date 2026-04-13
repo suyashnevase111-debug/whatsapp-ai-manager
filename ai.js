@@ -1,41 +1,57 @@
 require("dotenv").config();
 
-function analyzeMessage(message) {
-  const msg = message.toLowerCase().trim();
+const SYSTEM_PROMPT = `You are a smart business assistant for small shop owners in India.
+Parse the WhatsApp message and return ONLY a JSON object:
 
-  // Stock Add patterns
-  if (msg.match(/^add\s+(\d+)\s+(.+)/) || msg.match(/(\d+)\s+(.+)\s+aaya/)) {
-    const match = msg.match(/^add\s+(\d+)\s+(.+)/) || msg.match(/(\d+)\s+(.+)\s+aaya/);
-    return { intent: "stock_add", quantity: parseInt(match[1]), product: match[2].replace("aaya","").trim(), person: null, amount: null };
+{"intent":"stock_add","product":"apples","quantity":5,"person":null,"amount":null}
+
+Intent rules:
+- stock_add: adding/received stock. e.g. "add 5 apples", "10 maggi aaya", "aaya 5 chawal"
+- stock_sell: sold something. e.g. "sold 3 mangoes", "becha 2 kg rice", "3 biscuit gaya"
+- udhaar: someone owes money. e.g. "udhaar 500 from Raju", "Ramesh ko 500 udhaar diya"
+- udhaar_paid: someone paid back. e.g. "Raju ne 200 diya", "Ramesh paid 300"
+- balance: check stock. e.g. "balance", "kitna stock hai", "stock check"
+- report: summary. e.g. "report", "aaj ka summary"
+- unknown: anything else
+
+Support Hindi, Hinglish, English, Marathi. Return ONLY JSON. No markdown. No explanation.`;
+
+async function analyzeMessage(message) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: "llama3-8b-8192",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: message }
+      ],
+      temperature: 0,
+      max_tokens: 200
+    })
+  });
+
+  const data = await response.json();
+  console.log("Groq response:", JSON.stringify(data, null, 2));
+
+  if (!data.choices || !data.choices[0]) {
+    console.error("API Error:", data);
+    return { intent: "unknown" };
   }
 
-  // Stock Sell patterns
-  if (msg.match(/^sold\s+(\d+)\s+(.+)/) || msg.match(/^becha\s+(\d+)\s+(.+)/)) {
-    const match = msg.match(/^sold\s+(\d+)\s+(.+)/) || msg.match(/^becha\s+(\d+)\s+(.+)/);
-    return { intent: "stock_sell", quantity: parseInt(match[1]), product: match[2].trim(), person: null, amount: null };
-  }
+  const raw = data.choices[0].message.content.trim();
+  console.log("Raw text:", raw);
 
-  // Udhaar patterns
-  if (msg.match(/udhaar\s+(\d+)\s+from\s+(\w+)/) || msg.match(/(\w+)\s+ko\s+(\d+)\s+(udhar|udhaar)/)) {
-    const match = msg.match(/udhaar\s+(\d+)\s+from\s+(\w+)/) || msg.match(/(\w+)\s+ko\s+(\d+)\s+(udhar|udhaar)/);
-    if (msg.includes("from")) {
-      return { intent: "udhaar", amount: parseInt(match[1]), person: match[2], product: null, quantity: null };
-    } else {
-      return { intent: "udhaar", amount: parseInt(match[2]), person: match[1], product: null, quantity: null };
-    }
+  try {
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    console.error("Failed to parse:", raw);
+    return { intent: "unknown" };
   }
-
-  // Balance
-  if (msg.includes("balance") || msg.includes("stock check") || msg.includes("kitna stock")) {
-    return { intent: "balance", product: null, quantity: null, person: null, amount: null };
-  }
-
-  // Report
-  if (msg.includes("report") || msg.includes("summary")) {
-    return { intent: "report", product: null, quantity: null, person: null, amount: null };
-  }
-
-  return { intent: "unknown", product: null, quantity: null, person: null, amount: null };
 }
 
 module.exports = { analyzeMessage };
