@@ -1,6 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
+const axios = require("axios");
+const FormData = require("form-data");
 const { chat } = require("./ai");
 const { getUser, saveUser } = require("./firebase");
 
@@ -8,10 +10,74 @@ const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+async function transcribeVoice(mediaUrl, accountSid, authToken) {
+  try {
+    // Download voice file from Twilio
+    const audioResponse = await axios.get(mediaUrl, {
+      responseType: "arraybuffer",
+      auth: { username: accountSid, password: authToken }
+    });
+
+    // Send to Groq Whisper for transcription
+    const formData = new FormData();
+    formData.append("file", Buffer.from(audioResponse.data), {
+      filename: "audio.ogg",
+      contentType: "audio/ogg"
+    });
+    formData.append("model", "whisper-large-v3");
+    formData.append("language", "hi"); // Hindi/Hinglish
+
+    const whisperResponse = await axios.post(
+      "https://api.groq.com/openai/v1/audio/transcriptions",
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`
+        }
+      }
+    );
+
+    return whisperResponse.data.text;
+  } catch (err) {
+    console.error("Transcription error:", err.message);
+    return null;
+  }
+}
+
 app.post("/webhook", async (req, res) => {
-  const message = req.body.Body;
   const phone = req.body.From?.replace(/\D/g, "") || "unknown";
+  const mediaUrl = req.body.MediaUrl0;
+  const mediaType = req.body.MediaContentType0;
+
+  let message = req.body.Body || "";
+
   console.log(`📩 From ${phone}: ${message}`);
+  console.log(`Media: ${mediaType} - ${mediaUrl}`);
+
+  // Handle voice message
+  if (mediaUrl && mediaType && mediaType.includes("audio")) {
+    console.log("🎙️ Voice message detected!");
+    const transcript = await transcribeVoice(
+      mediaUrl,
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
+
+    if (transcript) {
+      console.log("📝 Transcript:", transcript);
+      message = `🎙️ Voice: "${transcript}"`;
+    } else {
+      const twiml = `<Response><Message>❌ Voice message samajh nahi aaya. Please text mein likhein.</Message></Response>`;
+      res.set("Content-Type", "text/xml");
+      return res.send(twiml);
+    }
+  }
+
+  if (!message) {
+    res.set("Content-Type", "text/xml");
+    return res.send(`<Response><Message>❓ Kuch samajh nahi aaya!</Message></Response>`);
+  }
 
   // Load user data from Firebase
   const user = await getUser(phone);
@@ -33,7 +99,6 @@ app.post("/webhook", async (req, res) => {
     if (action.intent === "stock_add" && action.product && action.quantity) {
       const key = action.product.toLowerCase();
       user.stock[key] = (user.stock[key] || 0) + action.quantity;
-      console.log("Stock updated:", user.stock);
     }
     else if (action.intent === "stock_sell" && action.product && action.quantity) {
       const key = action.product.toLowerCase();
@@ -50,7 +115,7 @@ app.post("/webhook", async (req, res) => {
     }
   }
 
-  // Save updated user data to Firebase
+  // Save to Firebase
   await saveUser(phone, {
     stock: user.stock,
     udhaar: user.udhaar,
