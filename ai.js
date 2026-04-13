@@ -20,6 +20,11 @@ async function analyzeMessage(message) {
   const data = await response.json();
   console.log("Raw API response:", JSON.stringify(data, null, 2));
 
+  if (!data.candidates || !data.candidates[0]) {
+    console.error("API Error:", data);
+    return { intent: "unknown" };
+  }
+
   const raw = data.candidates[0].content.parts[0].text.trim();
 
   try {
