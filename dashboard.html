@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShopBot Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1a1a24;
+    --border: rgba(255,255,255,0.07);
+    --gold: #f5a623;
+    --gold2: #ffcc57;
+    --green: #2ecc71;
+    --red: #e74c3c;
+    --blue: #3b82f6;
+    --purple: #8b5cf6;
+    --text: #f0f0f0;
+    --muted: #6b7280;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 20%, rgba(245,166,35,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(59,130,246,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; }
+  header { padding: 24px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  .header-inner { display: flex; align-items: center; justify-content: space-between; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--gold), var(--gold2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .logo-text { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; }
+  .logo-text span { color: var(--gold); }
+  .live-badge { display: flex; align-items: center; gap: 6px; background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.3); color: var(--green); padding: 6px 14px; border-radius: 100px; font-size: 13px; }
+  .live-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; animation: fadeUp 0.5s ease both; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 16px 16px 0 0; }
+  .stat-card.gold::before { background: linear-gradient(90deg, var(--gold), var(--gold2)); }
+  .stat-card.green::before { background: linear-gradient(90deg, #2ecc71, #a8e063); }
+  .stat-card.red::before { background: linear-gradient(90deg, #e74c3c, #f39c12); }
+  .stat-card.blue::before { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+  .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+  .stat-card.gold .stat-value { color: var(--gold2); }
+  .stat-card.green .stat-value { color: #2ecc71; }
+  .stat-card.red .stat-value { color: #e74c3c; }
+  .stat-card.blue .stat-value { color: #60a5fa; }
+  .stat-sub { font-size: 12px; color: var(--muted); }
+  .stat-icon { position: absolute; right: 16px; top: 16px; font-size: 28px; opacity: 0.15; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; animation: fadeUp 0.6s ease both; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .card-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+  .card-count { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 3px 10px; border-radius: 100px; font-size: 12px; }
+  .stock-list, .udhaar-list, .sales-list, .alert-list { display: flex; flex-direction: column; gap: 10px; }
+  .stock-item, .udhaar-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface2); border-radius: 12px; border: 1px solid var(--border); }
+  .stock-emoji, .avatar { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .stock-emoji { background: rgba(245,166,35,0.1); font-size: 18px; }
+  .avatar { background: linear-gradient(135deg, var(--purple), var(--blue)); border-radius: 50%; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; }
+  .stock-name, .udhaar-name { flex: 1; font-weight: 500; font-size: 14px; text-transform: capitalize; }
+  .stock-qty { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; }
+  .stock-qty.low { color: var(--red); }
+  .stock-qty.ok { color: var(--green); }
+  .stock-qty.medium { color: var(--gold); }
+  .stock-bar-wrap { width: 80px; height: 4px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+  .stock-bar { height: 100%; border-radius: 4px; }
+  .stock-bar.low { background: var(--red); }
+  .stock-bar.ok { background: var(--green); }
+  .stock-bar.medium { background: var(--gold); }
+  .udhaar-amount { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: #f87171; }
+  .sale-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .sale-product { width: 90px; color: var(--muted); text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sale-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; }
+  .sale-bar { height: 100%; background: linear-gradient(90deg, var(--blue), var(--purple)); border-radius: 6px; }
+  .sale-qty { width: 30px; text-align: right; font-weight: 600; color: #60a5fa; }
+  .alert-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; border: 1px solid transparent; }
+  .alert-item.warn { background: rgba(245,166,35,0.08); border-color: rgba(245,166,35,0.2); }
+  .alert-item.danger { background: rgba(231,76,60,0.08); border-color: rgba(231,76,60,0.2); }
+  .alert-icon { font-size: 16px; }
+  .alert-text { color: #d1d5db; line-height: 1.4; }
+  .refresh-btn { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.3); color: var(--gold); padding: 7px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .empty { text-align: center; color: var(--muted); padding: 24px 0; font-size: 14px; }
+  .empty-icon { font-size: 32px; margin-bottom: 8px; }
+  footer { text-align: center; padding: 28px 0; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); margin-top: 12px; }
+  footer span { color: var(--gold); }
+  .loading { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); padding: 20px; font-size: 14px; }
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(245,166,35,0.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 768px) { .stats-row { grid-template-columns: repeat(2,1fr); } .grid,.grid-3 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">🛒</div>
+        <div class="logo-text">Shop<span>Bot</span> Dashboard</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="live-badge"><div class="live-dot"></div>Live</div>
+        <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat-card gold"><div class="stat-icon">📦</div><div class="stat-label">Total Products</div><div class="stat-value" id="totalProducts">—</div><div class="stat-sub">in stock</div></div>
+    <div class="stat-card green"><div class="stat-icon">🛒</div><div class="stat-label">Items Sold</div><div class="stat-value" id="totalSold">—</div><div class="stat-sub">total sales</div></div>
+    <div class="stat-card red"><div class="stat-icon">💰</div><div class="stat-label">Total Udhaar</div><div class="stat-value" id="totalUdhaar">—</div><div class="stat-sub">pending</div></div>
+    <div class="stat-card blue"><div class="stat-icon">⚠️</div><div class="stat-label">Low Stock</div><div class="stat-value" id="lowStockCount">—</div><div class="stat-sub">items ≤ 5</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-header"><div class="card-title">📦 Stock Balance</div><span class="card-count" id="stockCount">0 items</span></div>
+      <div class="stock-list" id="stockList"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">💰 Udhaar Tracker</div><span class="card-count" id="udhaarCount">0 people</span></div>
+      <div class="udhaar-list" id="udhaarList"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-header"><div class="card-title">🛒 Sales Overview</div><span class="card-count" id="salesCount">0 records</span></div>
+      <div class="sales-list" id="salesList"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">🔔 Alerts</div></div>
+      <div class="alert-list" id="alertList"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    </div>
+  </div>
+
+  <footer>Built with ❤️ by <span>ShopBot</span> — WhatsApp AI Manager for India 🇮🇳</footer>
+</div>
+
+<script>
+async function loadData() {
+  try {
+    const res = await fetch('/api/stats');
+    const data = await res.json();
+    renderDashboard(data);
+  } catch(err) { console.error(err); }
+}
+
+function getEmoji(p) {
+  const map = {maggi:'🍜',chips:'🍟',milk:'🥛',rice:'🍚',bread:'🍞',biscuit:'🍪',chawal:'🍚',aata:'🌾',dal:'🫘',sugar:'🍬',oil:'🫙',soap:'🧼'};
+  for(const [k,e] of Object.entries(map)) if(p.includes(k)) return e;
+  return '📦';
+}
+
+function renderDashboard(data) {
+  const stock = data.stock || {}, udhaar = data.udhaar || {}, sales = data.sales || [];
+  const stockItems = Object.values(stock);
+  const totalUdhaarAmt = Object.values(udhaar).reduce((s,v)=>s+v,0);
+  const lowStockItems = Object.entries(stock).filter(([,q])=>q<=5);
+
+  document.getElementById('totalProducts').textContent = stockItems.length;
+  document.getElementById('totalSold').textContent = sales.reduce((s,x)=>s+(x.quantity||0),0);
+  document.getElementById('totalUdhaar').textContent = '₹'+totalUdhaarAmt;
+  document.getElementById('lowStockCount').textContent = lowStockItems.length;
+
+  const maxQty = Math.max(...stockItems, 1);
+  const stockEl = document.getElementById('stockList');
+  document.getElementById('stockCount').textContent = stockItems.length+' items';
+  stockEl.innerHTML = stockItems.length === 0
+    ? '<div class="empty"><div class="empty-icon">📦</div>No stock added yet</div>'
+    : Object.entries(stock).map(([p,q])=>{
+        const l = q<=5?'low':q<=15?'medium':'ok';
+        return `<div class="stock-item"><div class="stock-emoji">${getEmoji(p)}</div><div class="stock-name">${p}</div><div class="stock-bar-wrap"><div class="stock-bar ${l}" style="width:${Math.min(100,Math.round(q/maxQty*100))}%"></div></div><div class="stock-qty ${l}">${q}</div></div>`;
+      }).join('');
+
+  const udhaarEntries = Object.entries(udhaar).filter(([,v])=>v>0);
+  document.getElementById('udhaarCount').textContent = udhaarEntries.length+' people';
+  document.getElementById('udhaarList').innerHTML = udhaarEntries.length === 0
+    ? '<div class="empty"><div class="empty-icon">✅</div>No pending udhaar!</div>'
+    : udhaarEntries.map(([n,a])=>`<div class="udhaar-item"><div class="avatar">${n[0].toUpperCase()}</div><div class="udhaar-name">${n}</div><div class="udhaar-amount">₹${a}</div></div>`).join('');
+
+  const salesMap = {};
+  sales.forEach(s=>{ salesMap[s.product]=(salesMap[s.product]||0)+s.quantity; });
+  const salesEntries = Object.entries(salesMap).sort(([,a],[,b])=>b-a);
+  const maxSale = Math.max(...Object.values(salesMap),1);
+  document.getElementById('salesCount').textContent = sales.length+' records';
+  document.getElementById('salesList').innerHTML = salesEntries.length === 0
+    ? '<div class="empty"><div class="empty-icon">🛒</div>No sales yet</div>'
+    : salesEntries.map(([p,q])=>`<div class="sale-row"><div class="sale-product">${p}</div><div class="sale-bar-wrap"><div class="sale-bar" style="width:${Math.round(q/maxSale*100)}%"></div></div><div class="sale-qty">${q}</div></div>`).join('');
+
+  const alerts = [];
+  lowStockItems.forEach(([p,q])=>alerts.push({type:q===0?'danger':'warn',icon:q===0?'🚨':'⚠️',text:q===0?`<b>${p}</b> is completely out of stock!`:`<b>${p}</b> only ${q} left`}));
+  udhaarEntries.slice(0,3).forEach(([n,a])=>alerts.push({type:'warn',icon:'💰',text:`<b>${n}</b> owes ₹${a}`}));
+  document.getElementById('alertList').innerHTML = alerts.length === 0
+    ? '<div class="empty"><div class="empty-icon">✅</div>All good! No alerts</div>'
+    : alerts.slice(0,6).map(a=>`<div class="alert-item ${a.type}"><div class="alert-icon">${a.icon}</div><div class="alert-text">${a.text}</div></div>`).join('');
+}
+
+loadData();
+setInterval(loadData, 30000);
+</script>
+</body>
+</html>
