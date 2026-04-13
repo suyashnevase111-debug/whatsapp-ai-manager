@@ -30,4 +30,6 @@ app.post("/webhook", async (req, res) => {
   res.send(`<Response><Message>${reply}</Message></Response>`);
 });
 
-app.listen(3000, () => console.log("🚀 Server listening on http://localhost:3000"));
+app.listen(3000, () =>
+  console.log("🚀 Server listening on http://localhost:3000")
+);
