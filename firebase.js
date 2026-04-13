@@ -12,9 +12,7 @@ const db = admin.firestore();
 async function getUser(phone) {
   try {
     const doc = await db.collection("users").doc(phone).get();
-    if (doc.exists) {
-      return doc.data();
-    }
+    if (doc.exists) return doc.data();
     return { stock: {}, udhaar: {}, sales: [], history: [] };
   } catch (err) {
     console.error("Firebase getUser error:", err);
@@ -30,4 +28,14 @@ async function saveUser(phone, data) {
   }
 }
 
-module.exports = { db, getUser, saveUser };
+async function getAllUsers() {
+  try {
+    const snapshot = await db.collection("users").get();
+    return snapshot.docs.map(doc => ({ phone: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.error("getAllUsers error:", err);
+    return [];
+  }
+}
+
+module.exports = { db, getUser, saveUser, getAllUsers };
