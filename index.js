@@ -6,7 +6,7 @@ const twilio = require("twilio");
 const axios = require("axios");
 const FormData = require("form-data");
 const path = require("path");
-const { chat } = require("./ai");
+const { chat, getBusinessAdvice } = require("./ai");
 const { getUser, saveUser, getAllUsers } = require("./firebase");
 
 const app = express();
@@ -108,7 +108,22 @@ app.post("/webhook", async (req, res) => {
   user.history.push({ role: "assistant", content: reply });
   if (user.history.length > 20) user.history = user.history.slice(-20);
 
-  // Process action
+  // 🤖 Business Advice — special handler
+  if (action && (action.intent === "advice" || action.intent === "suggest")) {
+    const advice = await getBusinessAdvice(user.stock, user.udhaar, user.sales);
+    await saveUser(phone, {
+      stock: user.stock,
+      udhaar: user.udhaar,
+      sales: user.sales,
+      history: user.history,
+      phone: phone,
+      lastSeen: new Date().toISOString()
+    });
+    res.set("Content-Type", "text/xml");
+    return res.send(`<Response><Message>🤖 *AI Business Advice*\n\n${advice}</Message></Response>`);
+  }
+
+  // Process other actions
   if (action) {
     if (action.intent === "stock_add" && action.product && action.quantity) {
       const key = action.product.toLowerCase();

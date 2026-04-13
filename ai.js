@@ -6,6 +6,7 @@ You help with:
 1. Stock management (adding/selling products)
 2. Udhaar (credit) tracking
 3. Business reports and balance
+4. Business advice
 
 RULES:
 - ALWAYS reply in the EXACT SAME LANGUAGE as the user's message
@@ -25,7 +26,6 @@ BEHAVIOR:
 - Use emojis naturally
 - Keep replies short and clear
 
-STORE DATA FORMAT (use this to track):
 When you detect an action, include a special JSON tag at the END of your reply:
 <!--ACTION:{"intent":"stock_add","product":"maggi","quantity":10,"person":null,"amount":null}-->
 
@@ -36,9 +36,31 @@ Intent options:
 - udhaar_paid: someone paid back
 - balance: user wants stock balance
 - report: user wants full report
+- advice: user wants business advice or suggestions
 - chat: just conversation, no action needed
 
 If information is missing, do NOT include the ACTION tag — just ask the question.`;
+
+async function callGroq(systemPrompt, userMessage) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  });
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content?.trim() || "";
+}
 
 async function chat(message, history = []) {
   const messages = [
@@ -72,7 +94,6 @@ async function chat(message, history = []) {
   const fullReply = data.choices[0].message.content.trim();
   console.log("Full reply:", fullReply);
 
-  // Extract action from reply
   const actionMatch = fullReply.match(/<!--ACTION:(.*?)-->/s);
   let action = null;
   let cleanReply = fullReply.replace(/<!--ACTION:.*?-->/s, "").trim();
@@ -88,4 +109,24 @@ async function chat(message, history = []) {
   return { reply: cleanReply, action };
 }
 
-module.exports = { chat };
+async function getBusinessAdvice(stock, udhaar, sales) {
+  const prompt = `You are a smart business advisor for a small shop in India.
+
+Here is the shop's current data:
+- Stock: ${JSON.stringify(stock)}
+- Udhaar (pending payments): ${JSON.stringify(udhaar)}
+- Recent Sales: ${JSON.stringify(sales.slice(-20))}
+
+Give 3 short, actionable business tips in Hindi/Hinglish based on this real data.
+Examples:
+- "Chips ka stock khatam ho raha hai, jaldi order karo!"
+- "Ramesh ka ₹500 udhaar zyada din se pending hai"
+- "Maggi sabse zyada bik raha hai, double stock rakho"
+
+Be specific using their actual data. Use emojis. Keep each tip under 20 words.
+Format: just 3 bullet points, nothing else.`;
+
+  return await callGroq(prompt, "give advice now");
+}
+
+module.exports = { chat, getBusinessAdvice };
